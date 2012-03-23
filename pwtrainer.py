@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- mode: python; coding: utf-8 -*-
 """
-Really Simple Password Trainer v1.4 - A simple password training program.
+Really Simple Password Trainer v1.6 - A simple password training program.
 
 Copyright (C) 2012 Antti Maula
 

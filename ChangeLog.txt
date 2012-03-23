@@ -4,6 +4,11 @@
 
 *****************
 
+* 1.6 @ 23.03.2012
+  - Changed the quality requirements to more "strict" behaviour - average over
+    five last correct entries and stricter mean time and std limits.
+
+
 * 1.4 @ 23.03.2012
   - Removed dependency to matplotlib by implementing the mean and std 
     functions

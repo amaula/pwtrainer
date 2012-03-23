@@ -33,7 +33,7 @@ read_char = None
 def init_read_char():
     global read_char
     try:
-        import sys, tty, termios
+        import tty, termios
         def read_char_unix():
             fd = sys.stdin.fileno()
             old_settings = termios.tcgetattr(fd)
@@ -116,21 +116,31 @@ def show_timing_analysis(timing):
               (index+1, t[0], t[1], t[2], t[3])
 
 
-def is_good_enough_timing(timing, mean_lim, std_lim):
+def is_good_enough_timing(timing, mean_lim, std_lim, history_count):
     """ Returns True if the given timing table is good enough. Good
-    enough is determined by counting the average of last three
-    entries. If the averages of mean and std values are below given
-    values, the function returns True.
+    enough is determined by counting the average of last specified
+    number of entries. If the averages of mean and std values are
+    below given values, the function returns True.
     """
-    if len(timing) < 3:
-        return False
-    ta = calculate_timing_analysis(timing)
-    last_three_mean_mean = mean([ta[-1][0], ta[-2][0], ta[-3][0]])
-    last_three_mean_std = mean([ta[-1][3], ta[-2][3], ta[-3][3]])
+    hcount = history_count
 
-    if last_three_mean_std < std_lim and last_three_mean_mean < mean_lim:
+    if len(timing) < hcount:
+        return False
+
+    mean_sum = 0
+    std_sum = 0
+    ta = calculate_timing_analysis(timing)
+    for c in range(-hcount, 0):
+        mean_sum = mean_sum + ta[c][0]
+        std_sum = std_sum + ta[c][3]
+    mean_mean = mean_sum / hcount
+    mean_std = std_sum / hcount
+
+    if mean_std < std_lim and mean_mean < mean_lim:
         return True
-    return False
+    else:
+        return False
+
 
 def main():
     print "Really Simple Password Trainer v1.4"
@@ -142,8 +152,8 @@ def main():
 
     # Limits
     required_correct = 20
-    required_mean_lim = 0.5
-    required_std_lim = 0.3
+    required_mean_lim = 0.4
+    required_std_lim = 0.25
     limit = 100
     correct = 0
     incorrect = 0
@@ -188,7 +198,7 @@ def main():
         print "\nNow, type the password again correctly for %d times" % \
               required_correct
         while correct < required_correct and correct+incorrect < limit and \
-                  not is_good_enough_timing(correct_times, required_mean_lim, required_std_lim):
+                  not is_good_enough_timing(correct_times, required_mean_lim, required_std_lim, 5):
             pw, timing = read_password()
             if pw == pwh:
                 print "Correct."
@@ -206,7 +216,7 @@ def main():
             print "Status: %d correct, %d incorrect. %d more corrects required" % \
                   (correct, incorrect, required_correct-correct)
 
-        if is_good_enough_timing(correct_times, required_mean_lim, required_std_lim):
+        if is_good_enough_timing(correct_times, required_mean_lim, required_std_lim, 5):
             print "\nYour input quality exceeded requirements, hence no more attempts required"
         print "Completed. You got %d correct out of %d attempts\n" % (correct, correct+incorrect)
 

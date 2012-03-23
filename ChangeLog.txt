@@ -1,0 +1,22 @@
+******************************************************************************
+** pwtrainer                                                                **
+******************************************************************************
+
+*****************
+
+* 1.4 @ 23.03.2012
+  - Removed dependency to matplotlib by implementing the mean and std 
+    functions
+  - Now the app should work on Win + Linux; the read_char facility is now
+    cross platform
+
+
+* 1.2 @ 22.03.2012
+  - Added feature to be able to quit the application ;)
+  - Added mean/min/max/std calculation for pressed keys; when the password is 
+    typed fast enough, assume the password is learned well
+
+
+* 1.0 @ 22.03.2012
+  - First release, train passwords by asking them multiple times and telling
+    whether the answer was correct or not

@@ -1,8 +1,7 @@
 #!/usr/bin/python
 # -*- mode: python; coding: utf-8 -*-
 """
-Really Simple Password Trainer v1.6 - A simple password training program.
-
+Really Simple Password Trainer v1.8 - A simple password training program.
 Copyright (C) 2012 Antti Maula
 
 This program is free software: you can redistribute it and/or modify
@@ -22,15 +21,25 @@ import sys
 from time import time
 from getpass import getpass
 from math import sqrt
+import argparse
 
 # Class contents
 c_normal = 'abcdefghijklmnopqrstuvwxyz'
 c_capital = c_normal.upper()
 c_number = '0123456789'
 
+# Settings
+echo_str = 'XXX'
+greeting = "Really Simple Password Trainer v1.8 - Copyright (C) 2012 Antti Maula"
 
 read_char = None
 def init_read_char():
+    """Init character reader.
+
+    This special trick is required to be able to read single
+    characters without echo and without blocking. Complexity of the
+    function is caused by *NIX/Windows cross-platform support.
+    """
     global read_char
     try:
         import tty, termios
@@ -63,6 +72,8 @@ def read_password():
     ch = 'a'
     while ord(ch) not in [13, 3]:
         ch = read_char()
+        if echo_str:
+            sys.stdout.write(echo_str)
         times.append(time())
         if ord(ch) != 13:
             pw = pw + ch
@@ -72,6 +83,10 @@ def read_password():
     if len(times) >= 2:
         for i,t in enumerate(times[1:]):
             rtimes.append(t - times[i])
+
+    # newline if echo char was used
+    if echo_str:
+        print ""
 
     # Return as tuple
     return (pw, rtimes)
@@ -142,18 +157,39 @@ def is_good_enough_timing(timing, mean_lim, std_lim, history_count):
         return False
 
 
+def handle_arguments():
+    """Handle command line parameters.
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-r', action='store', metavar='num', default=20, type=int,
+                        help='Number of corrects required before considering as "learned"')
+    parser.add_argument('-m', action='store', metavar='num', default=0.4, type=float,
+                        help='Required mean delay between characters')
+    parser.add_argument('-s', action='store', metavar='num', default=0.25, type=float,
+                        help='Required standard deviation between characters')
+    parser.add_argument('-c', action='store', metavar='num', default=None, type=str,
+                        help='Required standard deviation between characters')
+    
+    
+    args = parser.parse_args()
+    print args
+    return args
+
+
 def main():
-    print "Really Simple Password Trainer v1.4"
-    print "(c) 2012 Antti Maula"
+    print greeting
     print ""
+
+    # Arguments
+    args = handle_arguments()
 
     # Init the read_char
     init_read_char()
 
     # Limits
-    required_correct = 20
-    required_mean_lim = 0.4
-    required_std_lim = 0.25
+    required_correct = args.r
+    required_mean_lim = args.m
+    required_std_lim = args.s
     limit = 100
     correct = 0
     incorrect = 0
@@ -168,7 +204,19 @@ def main():
 
     try:
         # Read reference
-        pwh = getpass('Reference password: ')
+        print "Enter reference password: "
+        pwh, timing = read_password()
+        pw_length = len(pwh)
+
+        # Check
+        if pw_length > 0 and ord(pwh[-1]) == 3:
+            print "Exit requested."
+            sys.exit(0)
+        if pw_length < 2:
+            print "No reason to learn such a short password."
+            sys.exit(0)
+
+        # Analyse classes
         for c in pwh:
             if c in c_normal:
                 c_normal_count = c_normal_count + 1
@@ -178,7 +226,6 @@ def main():
                 c_number_count = c_number_count + 1
             else:
                 c_special_count = c_special_count + 1
-        pw_length = len(pwh)
         class_count = ( int(c_number_count>0) + int(c_normal_count>0) + \
                         int(c_capital_count>0) + int(c_special_count>0) )
         class_depth = len(c_number)*int(c_number_count>0) + \

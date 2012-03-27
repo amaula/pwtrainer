@@ -124,12 +124,14 @@ def calculate_timing_analysis(timing):
 def show_timing_analysis(timing):
     """Just print timing statistics.
     """
-    print "Showing statistics per entered password character:"
-    ta = calculate_timing_analysis(timing)
-    for index, t in enumerate(ta):
-        print "Correct #%d: mean %.3fs, min: %.3fs, max: %.3fs, std: %.3fs" % \
-              (index+1, t[0], t[1], t[2], t[3])
-
+    if len(timing) > 0:
+        print "Showing statistics per entered password character:"
+        ta = calculate_timing_analysis(timing)
+        for index, t in enumerate(ta):
+            print "Correct #%d: mean %.3fs, min: %.3fs, max: %.3fs, std: %.3fs" % \
+                  (index+1, t[0], t[1], t[2], t[3])
+    else:
+        print "No statistics to show as there were no correct entries."
 
 def is_good_enough_timing(timing, mean_lim, std_lim, history_count):
     """ Returns True if the given timing table is good enough. Good
@@ -162,18 +164,18 @@ def handle_arguments():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument('-r', action='store', metavar='num', default=20, type=int,
-                        help='Number of corrects required before considering as "learned"')
+                        help='Number of corrects required before considering as "learned" (default: 20)')
     parser.add_argument('-m', action='store', metavar='num', default=0.4, type=float,
-                        help='Required mean delay between characters')
+                        help='Required mean delay between characters (default: 0.4)')
     parser.add_argument('-s', action='store', metavar='num', default=0.25, type=float,
-                        help='Required standard deviation between characters')
-    parser.add_argument('-c', action='store', metavar='num', default=None, type=str,
-                        help='Required standard deviation between characters')
+                        help='Required standard deviation between characters (default: 0.25)')
+    parser.add_argument('-i', action='store', metavar='num', default=5, type=int,
+                        help='History length to consider when checking mean/std values (default: 5)')
+    #parser.add_argument('-c', action='store', metavar='num', default=None, type=str,
+    #                    help='')
     
     
-    args = parser.parse_args()
-    print args
-    return args
+    return parser.parse_args()
 
 
 def main():
@@ -190,7 +192,10 @@ def main():
     required_correct = args.r
     required_mean_lim = args.m
     required_std_lim = args.s
+    required_history = args.i
     limit = 100
+
+    # Calculations
     correct = 0
     incorrect = 0
     correct_times = []
@@ -201,79 +206,73 @@ def main():
     c_number_count = 0
     c_special_count = 0
 
+    # Read reference
+    print "Enter reference password: "
+    pwh, timing = read_password()
+    pw_length = len(pwh)
 
-    try:
-        # Read reference
-        print "Enter reference password: "
-        pwh, timing = read_password()
-        pw_length = len(pwh)
+    # Check
+    if pw_length > 0 and ord(pwh[-1]) == 3:
+        print "Exit requested."
+        sys.exit(0)
+    if pw_length < 2:
+        print "No reason to learn such a short password."
+        sys.exit(0)
 
-        # Check
-        if pw_length > 0 and ord(pwh[-1]) == 3:
+    # Analyse classes
+    for c in pwh:
+        if c in c_normal:
+            c_normal_count = c_normal_count + 1
+        elif c in c_capital:
+            c_capital_count = c_capital_count + 1
+        elif c in c_number:
+            c_number_count = c_number_count + 1
+        else:
+            c_special_count = c_special_count + 1
+    class_count = ( int(c_number_count>0) + int(c_normal_count>0) + \
+                    int(c_capital_count>0) + int(c_special_count>0) )
+    class_depth = len(c_number)*int(c_number_count>0) + \
+                  len(c_normal)*int(c_normal_count>0) + \
+                  len(c_capital)*int(c_capital_count>0) + \
+                  33*int(c_special_count>0)
+    combinations = class_depth ** pw_length
+
+    print "\nReference password read, properties:"
+    print "Length: %d characters" % pw_length
+    print "Contains characters from %d classes (%d different characters)" % \
+          (class_count, class_depth)
+    print "Search space size: %d combinations" % combinations
+
+
+    # Iterate
+    print "\nNow, type the password again correctly for %d times, or until quality requirements are met" % \
+          required_correct
+    while correct < required_correct and correct+incorrect < limit and \
+              not is_good_enough_timing(correct_times, required_mean_lim, required_std_lim, required_history):
+        pw, timing = read_password()
+        if pw == pwh:
+            print "Correct."
+            correct = correct + 1
+            correct_times.append(timing)
+
+        elif len(pw) == 1 and ord(pw[0]) == 3:
             print "Exit requested."
-            sys.exit(0)
-        if pw_length < 2:
-            print "No reason to learn such a short password."
-            sys.exit(0)
+            break
 
-        # Analyse classes
-        for c in pwh:
-            if c in c_normal:
-                c_normal_count = c_normal_count + 1
-            elif c in c_capital:
-                c_capital_count = c_capital_count + 1
-            elif c in c_number:
-                c_number_count = c_number_count + 1
-            else:
-                c_special_count = c_special_count + 1
-        class_count = ( int(c_number_count>0) + int(c_normal_count>0) + \
-                        int(c_capital_count>0) + int(c_special_count>0) )
-        class_depth = len(c_number)*int(c_number_count>0) + \
-                      len(c_normal)*int(c_normal_count>0) + \
-                      len(c_capital)*int(c_capital_count>0) + \
-                      33*int(c_special_count>0)
-        combinations = class_depth ** pw_length
+        else:
+            print "*** Incorrect!"
+            incorrect = incorrect + 1
 
-        print "\nReference password read, properties:"
-        print "Length: %d characters" % pw_length
-        print "Contains characters from %d classes (%d different characters)" % \
-              (class_count, class_depth)
-        print "Search space size: %d combinations" % combinations
+        print "Status: %d correct, %d incorrect. %d more corrects required" % \
+              (correct, incorrect, required_correct-correct)
 
+    if is_good_enough_timing(correct_times, required_mean_lim, required_std_lim, required_history):
+        print "\nYour input quality exceeded requirements, hence no more iterations required"
+    print "Completed. You got %d correct out of %d attempts\n" % (correct, correct+incorrect)
 
-        # Iterate
-        print "\nNow, type the password again correctly for %d times" % \
-              required_correct
-        while correct < required_correct and correct+incorrect < limit and \
-                  not is_good_enough_timing(correct_times, required_mean_lim, required_std_lim, 5):
-            pw, timing = read_password()
-            if pw == pwh:
-                print "Correct."
-                correct = correct + 1
-                correct_times.append(timing)
-
-            elif len(pw) == 1 and ord(pw[0]) == 3:
-                print "Exit requested."
-                break
-
-            else:
-                print "*** Incorrect!"
-                incorrect = incorrect + 1
-
-            print "Status: %d correct, %d incorrect. %d more corrects required" % \
-                  (correct, incorrect, required_correct-correct)
-
-        if is_good_enough_timing(correct_times, required_mean_lim, required_std_lim, 5):
-            print "\nYour input quality exceeded requirements, hence no more attempts required"
-        print "Completed. You got %d correct out of %d attempts\n" % (correct, correct+incorrect)
-
-        
-        show_timing_analysis(correct_times)
-
-    except EOFError:
-        print "\n\n\nTerminated by EOF.\n\n"
-        exit(0)
+    show_timing_analysis(correct_times)
 
 
 if __name__ == '__main__':
     main()
+    print "Exit."

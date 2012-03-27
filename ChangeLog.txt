@@ -4,9 +4,13 @@
 
 *****************
 
-* 1.7 @ 27.03.2012
-  - Arguments processing for setting various parameters
+* 1.8 @ 27.03.2012
   - Fine tuning and cleanup
+
+
+* 1.7 @ 26.03.2012
+  - Arguments processing for setting various parameters
+
 
 * 1.6 @ 23.03.2012
   - Changed the quality requirements to more "strict" behaviour - average over

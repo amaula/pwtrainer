@@ -171,9 +171,6 @@ def handle_arguments():
                         help='Required standard deviation between characters (default: 0.25)')
     parser.add_argument('-i', action='store', metavar='num', default=5, type=int,
                         help='History length to consider when checking mean/std values (default: 5)')
-    #parser.add_argument('-c', action='store', metavar='num', default=None, type=str,
-    #                    help='')
-    
     
     return parser.parse_args()
 
